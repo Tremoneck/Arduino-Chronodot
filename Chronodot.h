@@ -25,8 +25,6 @@ public:
 
     // 32-bit times as seconds since 1/1/2000
     long secondstime() const;   
-    // 32-bit times as seconds since 1/1/1970
-    uint32_t unixtime(void) const;
 
 protected:
     uint8_t yOff, m, d, hh, mm, ss;
@@ -41,17 +39,4 @@ public:
     static DateTime now();
 	static int16_t getTemperatur();
 };
-
-// RTC using the internal millis() clock, has to be initialized before use
-// NOTE: this clock won't be correct once the millis() timer rolls over (>49d?)
-class RTC_Millis {
-public:
-    static void begin(const DateTime& dt) { adjust(dt); }
-    static void adjust(const DateTime& dt);
-    static DateTime now();
-
-protected:
-    static long offset;
-};
-
 #endif CHRONODOT_H
