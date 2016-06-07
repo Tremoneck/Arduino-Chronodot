@@ -68,7 +68,7 @@ DateTime::DateTime (uint32_t t) {
     d = days + 1;
 }
 
-DateTime::DateTime (uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec, int tempF, float tempC) {
+DateTime::DateTime (uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec) {
     if (year >= 2000)
         year -= 2000;
     yOff = year;
@@ -77,8 +77,6 @@ DateTime::DateTime (uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uin
     hh = hour;
     mm = min;
     ss = sec;
-    ttf = tempF;
-    ttc = tempC;
 }
 
 static uint8_t conv2d(const char* p) {
@@ -162,7 +160,7 @@ void Chronodot::adjust(const DateTime& dt) {
     Wire.write(bin2bcd(0));							// byte 3
     Wire.write(bin2bcd(dt.day()));					// byte 4
     Wire.write(bin2bcd(dt.month()));				// byte 5
-    Wire.write(bin2bcd(dt.year() - 2000));			// byte 6
+    Wire.write(bin2bcd(dt.year()));			// byte 6
 #else
     Wire.send(0);
     Wire.send(bin2bcd(dt.second()));
@@ -171,7 +169,7 @@ void Chronodot::adjust(const DateTime& dt) {
     Wire.send(bin2bcd(0));
     Wire.send(bin2bcd(dt.day()));
     Wire.send(bin2bcd(dt.month()));
-    Wire.send(bin2bcd(dt.year() - 2000));
+    Wire.send(bin2bcd(dt.year()));
 #endif
     Wire.endTransmission();
 // now get the control byte - we need to set bit 7 to zero
@@ -209,28 +207,36 @@ DateTime Chronodot::now() {
 #endif
   Wire.endTransmission();
   
-  Wire.requestFrom(CHRONODOT_ADDRESS, 19);
-  byte blah[20];
+  Wire.requestFrom(CHRONODOT_ADDRESS, 7);
+  byte blah[0x07];
   int i;
-  for(i=0; i<20; i++) {
+  for(i=0; i<0x08; i++) {
 #if ARDUINO >= 100
     blah[i] = Wire.read();
 #else
     blah[i] = Wire.receive();
 #endif
   }
-  uint8_t ss = bcd2bin(blah[0] & 0x7F);
+  uint8_t ss = bcd2bin(blah[0]);
   uint8_t mm = bcd2bin(blah[1]);
   uint8_t hh = bcd2bin(blah[2]);
   uint8_t d = bcd2bin(blah[4]);
   uint8_t m = bcd2bin(blah[5]);
-  uint16_t y = bcd2bin(blah[6]) + 2000;
-  float ttc  = (float)(int)blah[17];
-  byte portion = blah[18];
-  if(portion == 0b01000000) ttc += 0.25;
-  if(portion == 0b10000000) ttc += 0.5;
-  if(portion == 0b11000000) ttc += 0.75;
-  float degF  = (((ttc * 9.0) / 5.0) + 32.5);
-  int ttf  = (int)degF;
-  return DateTime (y, m, d, hh, mm, ss, ttf, ttc);
+  uint8_t y = bcd2bin(blah[6]);
+
+  return DateTime(y, m, d, hh, mm, ss);
+}
+
+int16_t Chronodot::getTemperatur() {
+	setRegister(0x11);
+	Wire.requestFrom(CHRONODOT_ADDRESS, 2);
+#if ARDUINO >= 100
+	int16_t temp = Wire.read();
+	int8_t r = Wire.read();
+#else
+	int16_t temp = Wire.receive();
+	int8_t r = Wire.receive();
+#endif
+	temp = (temp << 2) | r >> 6;
+	return temp;
 }
