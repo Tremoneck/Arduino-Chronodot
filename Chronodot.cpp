@@ -18,8 +18,6 @@
 #define CHRONODOT_ADDRESS 0x68
 #define SECONDS_PER_DAY 86400L
 
-#define SECONDS_FROM_1970_TO_2000 946684800
-
 ////////////////////////////////////////////////////////////////////////////////
 // utility code, some of this could be exposed in the DateTime API if needed
 
@@ -46,8 +44,6 @@ static long time2long(uint16_t days, uint8_t h, uint8_t m, uint8_t s) {
 // NOTE: also ignores leap seconds, see http://en.wikipedia.org/wiki/Leap_second
 
 DateTime::DateTime (uint32_t t) {
-  t -= SECONDS_FROM_1970_TO_2000;    // bring to 2000 timestamp from 1970
-
     ss = t % 60;
     t /= 60;
     mm = t % 60;
@@ -124,14 +120,6 @@ long DateTime::secondstime(void) const {
   long t;
   uint16_t days = date2days(yOff, m, d);
   t = time2long(days, hh, mm, ss);
-  return t;
-}
-
-uint32_t DateTime::unixtime(void) const {
-  uint32_t t;
-  uint16_t days = date2days(yOff, m, d);
-  t = time2long(days, hh, mm, ss);
-  t += SECONDS_FROM_1970_TO_2000;  // seconds from 1970 to 2000
   return t;
 }
 
@@ -246,18 +234,3 @@ DateTime Chronodot::now() {
   int ttf  = (int)degF;
   return DateTime (y, m, d, hh, mm, ss, ttf, ttc);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// RTC_Millis implementation
-
-long RTC_Millis::offset = 0;
-
-void RTC_Millis::adjust(const DateTime& dt) {
-    offset = dt.unixtime() - millis() / 1000;
-}
-
-DateTime RTC_Millis::now() {
-  return (uint32_t)(offset + millis() / 1000);
-}
-
-////////////////////////////////////////////////////////////////////////////////
